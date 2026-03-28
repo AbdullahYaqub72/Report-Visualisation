@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL AI Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #070c16;
+  --surf:     #0d1525;
+  --surf2:    #111e32;
+  --surf3:    #152035;
+  --border:   #1c2d45;
+  --border2:  #243550;
+  --accent:   #00d4ff;
+  --accent2:  #7c3aed;
+  --green:    #10b981;
+  --amber:    #f59e0b;
+  --red:      #ef4444;
+  --text:     #dde6f0;
+  --text2:    #7a94b0;
+  --muted:    #3d5470;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Sora', sans-serif;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Starfield background ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, #00d4ff08 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, #7c3aed08 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Grid overlay ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout ── */
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+
+/* ── Topbar ── */
+.topbar {
+  grid-column: 1 / -1;
+  background: rgba(13, 21, 37, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.logo-text {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.logo-text span { color: var(--accent); }
+.logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.status-label { font-size: 12px; color: var(--text2); }
+
+/* ── Sidebar (input panel) ── */
+.sidebar {
+  background: rgba(13, 21, 37, 0.7);
+  border-right: 1px solid var(--border);
+  padding: 28px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 57px);
+  position: sticky;
+  top: 57px;
+}
+
+.panel-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Form elements ── */
+.field { margin-bottom: 18px; }
+.field label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.field label .icon { font-size: 14px; }
+
+select, input[type="text"], input[type="password"], textarea {
+  width: 100%;
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  appearance: none;
+}
+select:focus, input:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px #00d4ff18;
+}
+select option { background: var(--surf2); }
+
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 44px; }
+.eye-btn {
+  position: absolute;
+  right: 12px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 16px; padding: 4px;
+  transition: color .2s;
+}
+.eye-btn:hover { color: var(--text2); }
+
+textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+
+.db-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-family: var(--mono);
+  line-height: 1.6;
+}
+
+/* Model suggestions */
+.model-suggestions {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+}
+.model-chip {
+  font-size: 11px;
+  background: var(--surf3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 9px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--mono);
+  transition: all .15s;
+}
+.model-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Submit button ── */
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--accent), #0099cc);
+  color: #000;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px #00d4ff40;
+}
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.submit-btn .spinner {
+  width: 16px; height: 16px;
+  border: 2px solid #00000033;
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 22px 0;
+}
+
+/* ── Recent queries ── */
+.recent-item {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: all .15s;
+  line-height: 1.5;
+}
+.recent-item:hover { border-color: var(--accent); color: var(--text); }
+
+/* ── Main content ── */
+.main {
+  overflow-y: auto;
+  padding: 28px 32px;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 120px);
+  text-align: center;
+  padding: 40px;
+}
+.empty-icon {
+  font-size: 56px;
+  margin-bottom: 20px;
+  filter: grayscale(0.3);
+}
+.empty-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.empty-sub { font-size: 14px; color: var(--text2); max-width: 420px; line-height: 1.7; }
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 28px;
+  max-width: 440px;
+}
+.feature-pill {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Error banner ── */
+.error-banner {
+  background: #1f0c0c;
+  border: 1px solid #5a1a1a;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.error-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.error-msg { font-size: 13px; color: #fca5a5; line-height: 1.6; }
+.error-msg strong { color: #f87171; display: block; margin-bottom: 4px; }
+
+/* ── Results tabs ── */
+.tabs-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 24px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--text2);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.tab-btn.active {
+  background: var(--surf3);
+  color: var(--accent);
+  border: 1px solid var(--border2);
+}
+.tab-btn:hover:not(.active) { color: var(--text); }
+.tab-count {
+  background: var(--accent);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+}
+.card-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* ── SQL output ── */
+.sql-output {
+  background: #050a12;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #7effa8;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  position: relative;
+}
+.copy-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: all .15s;
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Stats strip ── */
+.stats-strip { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.stat-pill {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  padding: 7px 16px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.stat-pill strong { color: var(--accent); font-family: var(--mono); }
+
+/* ── Insights text ── */
+.insights-text {
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--text2);
+}
+
+/* ── Chart recommendations ── */
+.rec-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.rec-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .15s;
+}
+.rec-item:hover { border-color: var(--accent); color: var(--text); }
+.rec-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-family: var(--mono);
+  flex-shrink: 0;
+}
+.badge-line { background: #00d4ff20; color: #00d4ff; }
+.badge-bar, .badge-bar_horizontal { background: #7c3aed20; color: #a78bfa; }
+.badge-pie { background: #10b98120; color: #34d399; }
+.badge-scatter { background: #f59e0b20; color: #fbbf24; }
+.badge-table { background: #3b82f620; color: #60a5fa; }
+.badge-histogram { background: #ec489920; color: #f472b6; }
+.rec-info { display: flex; flex-direction: column; gap: 2px; }
+.rec-title { font-weight: 600; color: var(--text); font-size: 13px; }
+.rec-reason { font-size: 11px; color: var(--muted); }
+.rec-primary { color: var(--green); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+
+/* ── Data table ── */
+.table-wrap { overflow: auto; max-height: 500px; border-radius: 10px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  background: var(--surf2);
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 600;
+}
+th:hover { background: var(--surf3); }
+td { padding: 10px 14px; border-bottom: 1px solid #0d1725; color: var(--text2); }
+tr:hover td { background: #111e32; color: var(--text); }
+.table-footer { font-size: 11px; color: var(--muted); padding: 10px; text-align: right; }
+
+/* ── Dashboard tab ── */
+.dashboard-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.action-btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .2s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #0099cc);
+  color: #000;
+  border: none;
+}
+.btn-primary:hover { box-shadow: 0 4px 16px #00d4ff40; transform: translateY(-1px); }
+.btn-secondary {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+.dashboard-preview {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surf2);
+}
+.preview-bar {
+  background: var(--surf2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.preview-dots { display: flex; gap: 6px; }
+.preview-dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot-red { background: #ef4444; }
+.dot-yellow { background: #f59e0b; }
+.dot-green { background: #10b981; }
+.preview-url {
+  flex: 1;
+  background: var(--surf3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+iframe {
+  width: 100%;
+  height: 700px;
+  border: none;
+  display: block;
+}
+
+/* ── Loading overlay ── */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 20px;
+}
+.loading-ring {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top: 3px solid var(--accent);
+  animation: spin .8s linear infinite;
+}
+.loading-steps { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.loading-step {
+  font-size: 13px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  animation: fadeIn .4s ease both;
+}
+.loading-step.active { border-color: var(--accent); color: var(--accent); }
+.step-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--green);
+  color: #000;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 9999;
+  animation: slideUp .3s ease;
+  display: none;
+}
+.toast.show { display: block; }
+@keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surf); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+@media (max-width: 960px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { position: static; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+  .feature-grid { grid-template-columns: 1fr; }
+  .charts-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Topbar ────────────────────────────── -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">SQL<span>AI</span></div>
+        <div class="logo-sub">Natural Language → SQL → Visualization</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-dot"></div>
+      <span class="status-label">API Ready</span>
+    </div>
+  </header>
+
+  <!-- ── Sidebar ────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="panel-title">Configuration</div>
+
+    <!-- Provider -->
+    <div class="field">
+      <label><span class="icon">🤖</span> Model Provider</label>
+      <select id="provider" onchange="onProviderChange()">
+        <option value="google">Google Gemini</option>
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic Claude</option>
+      </select>
+    </div>
+
+    <!-- Model name -->
+    <div class="field">
+      <label><span class="icon">🏷</span> Model Name</label>
+      <input type="text" id="modelName" placeholder="gemini-2.5-flash" value="gemini-2.5-flash">
+      <div class="model-suggestions" id="modelSuggestions"></div>
+    </div>
+
+    <!-- API Key -->
+    <div class="field">
+      <label><span class="icon">🔑</span> API Key</label>
+      <div class="password-wrap">
+        <input type="password" id="apiKey" placeholder="Enter your API key…">
+        <button class="eye-btn" onclick="toggleKey()" title="Show/hide">👁</button>
+      </div>
+    </div>
+
+    <!-- DB URL -->
+    <div class="field">
+      <label><span class="icon">🗄</span> Database URL</label>
+      <input type="text" id="dbUrl" placeholder="postgresql+psycopg2://user:pass@host/db">
+      <div class="db-hint" id="dbHint">postgresql+psycopg2://user:pass@host:5432/dbname</div>
+    </div>
+
+    <!-- Query -->
+    <div class="field">
+      <label><span class="icon">💬</span> Natural Language Query</label>
+      <textarea id="query" rows="5" placeholder="Which user bought the most songs, and on which date?"></textarea>
+    </div>
+
+    <!-- Submit -->
+    <button class="submit-btn" id="submitBtn" onclick="runQuery()">
+      <span id="submitIcon">▶</span>
+      <span id="submitLabel">Run Query</span>
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Example queries -->
+    <div class="panel-title">Example Queries</div>
+    <div id="exampleQueries"></div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────── -->
+  <main class="main" id="main">
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🔮</div>
+      <div class="empty-title">Ask anything about your data</div>
+      <div class="empty-sub">
+        Configure your database and model on the left, type a natural language question, and get instant SQL + interactive charts.
+      </div>
+      <div class="feature-grid">
+        <div class="feature-pill">🧠 LLM-powered SQL generation</div>
+        <div class="feature-pill">✅ Automatic query validation</div>
+        <div class="feature-pill">📊 Smart chart selection</div>
+        <div class="feature-pill">📥 Download dashboard HTML</div>
+      </div>
+    </div>
+
+    <!-- Loading state -->
+    <div class="loading-state" id="loadingState" style="display:none">
+      <div class="loading-ring"></div>
+      <div class="loading-steps" id="loadingSteps"></div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsArea" style="display:none">
+
+      <!-- Stats strip -->
+      <div class="stats-strip" id="statsStrip"></div>
+
+      <!-- Tabs -->
+      <div class="tabs-bar">
+        <button class="tab-btn active" onclick="showTab('sql')" id="tab-sql">📝 SQL</button>
+        <button class="tab-btn" onclick="showTab('data')" id="tab-data">📋 Data</button>
+        <button class="tab-btn" onclick="showTab('insights')" id="tab-insights">💡 Insights</button>
+        <button class="tab-btn" onclick="showTab('viz')" id="tab-viz">📊 Viz Plan</button>
+        <button class="tab-btn" onclick="showTab('dashboard')" id="tab-dashboard">🖥 Dashboard</button>
+      </div>
+
+      <!-- SQL Tab -->
+      <div id="panel-sql">
+        <div class="card">
+          <div class="card-label">Generated & Validated SQL</div>
+          <div class="sql-output" id="sqlOutput">
+            <button class="copy-btn" onclick="copySQL()">Copy</button>
+            <code id="sqlCode"></code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Tab -->
+      <div id="panel-data" style="display:none">
+        <div class="card">
+          <div class="card-label">Query Results</div>
+          <div class="table-wrap" id="tableWrap"></div>
+          <div class="table-footer" id="tableFooter"></div>
+        </div>
+      </div>
+
+      <!-- Insights Tab -->
+      <div id="panel-insights" style="display:none">
+        <div class="card">
+          <div class="card-label">Data Insights</div>
+          <div class="insights-text" id="insightsText"></div>
+        </div>
+      </div>
+
+      <!-- Viz Plan Tab -->
+      <div id="panel-viz" style="display:none">
+        <div class="card">
+          <div class="card-label">Visualization Recommendations</div>
+          <ul class="rec-list" id="recList"></ul>
+        </div>
+      </div>
+
+      <!-- Dashboard Tab -->
+      <div id="panel-dashboard" style="display:none">
+        <div class="dashboard-actions">
+          <button class="action-btn btn-primary" onclick="openDashboard()">🚀 Open Full Dashboard</button>
+          <button class="action-btn btn-secondary" onclick="downloadDashboard()">📥 Download HTML</button>
+        </div>
+        <div class="dashboard-preview">
+          <div class="preview-bar">
+            <div class="preview-dots">
+              <div class="preview-dot dot-red"></div>
+              <div class="preview-dot dot-yellow"></div>
+              <div class="preview-dot dot-green"></div>
+            </div>
+            <div class="preview-url">dashboard.html — SQL AI Dashboard</div>
+          </div>
+          <iframe id="dashboardFrame" title="Dashboard Preview"></iframe>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// Config
+// ─────────────────────────────────────────────
+const API_BASE = 'http://localhost:8000';
+
+const MODEL_SUGGESTIONS = {
+  google:    ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'],
+  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5-20251001'],
+};
+
+const DB_HINTS = {
+  google:    'postgresql+psycopg2://user:pass@host:5432/db\nmysql+pymysql://user:pass@host:3306/db',
+  openai:    'postgresql+psycopg2://user:pass@host:5432/db',
+  anthropic: 'postgresql+psycopg2://user:pass@host:5432/db',
+};
+
+const EXAMPLES = [
+  'Which user has purchased the most products?',
+  'Show total revenue by category for last month',
+  'What are the top 10 products by sales volume?',
+  'How many new users signed up each day this week?',
+  'Find customers who haven\'t ordered in 90 days',
+];
+
+const LOADING_STEPS = [
+  '🔌 Connecting to database…',
+  '📋 Fetching schema…',
+  '🧠 Generating SQL with LLM…',
+  '✅ Validating query…',
+  '⚡ Executing query…',
+  '📊 Analyzing data…',
+  '🎨 Building dashboard…',
+];
+
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+let currentResult = null;
+let dashboardHTML = '';
+let loadingTimer = null;
+let activeTab = 'sql';
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+function init() {
+  onProviderChange();
+  const examplesEl = document.getElementById('exampleQueries');
+  EXAMPLES.forEach(ex => {
+    const div = document.createElement('div');
+    div.className = 'recent-item';
+    div.textContent = ex;
+    div.onclick = () => { document.getElementById('query').value = ex; };
+    examplesEl.appendChild(div);
+  });
+}
+
+function onProviderChange() {
+  const prov = document.getElementById('provider').value;
+  const suggestions = MODEL_SUGGESTIONS[prov] || [];
+  const suggestEl = document.getElementById('modelSuggestions');
+  const hintEl = document.getElementById('dbHint');
+  
+  suggestEl.innerHTML = '';
+  suggestions.forEach(m => {
+    const chip = document.createElement('span');
+    chip.className = 'model-chip';
+    chip.textContent = m;
+    chip.onclick = () => { document.getElementById('modelName').value = m; };
+    suggestEl.appendChild(chip);
+  });
+  
+  if (hintEl && DB_HINTS[prov]) hintEl.textContent = DB_HINTS[prov];
+  
+  // Set first suggestion as placeholder
+  if (suggestions[0]) document.getElementById('modelName').value = suggestions[0];
+}
+
+function toggleKey() {
+  const input = document.getElementById('apiKey');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// ─────────────────────────────────────────────
+// Tab management
+// ─────────────────────────────────────────────
+function showTab(tab) {
+  activeTab = tab;
+  ['sql','data','insights','viz','dashboard'].forEach(t => {
+    document.getElementById(`panel-${t}`).style.display = t === tab ? '' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+  // Load dashboard iframe lazily
+  if (tab === 'dashboard' && dashboardHTML) {
+    loadDashboardFrame();
+  }
+}
+
+function loadDashboardFrame() {
+  const frame = document.getElementById('dashboardFrame');
+  if (!frame.getAttribute('data-loaded')) {
+    const blob = new Blob([dashboardHTML], { type: 'text/html' });
+    frame.src = URL.createObjectURL(blob);
+    frame.setAttribute('data-loaded', '1');
+  }
+}
+
+// ─────────────────────────────────────────────
+// Loading animation
+// ─────────────────────────────────────────────
+function startLoading() {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsArea').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'flex';
+
+  const stepsEl = document.getElementById('loadingSteps');
+  stepsEl.innerHTML = '';
+  let stepIdx = 0;
+
+  function addStep() {
+    if (stepIdx >= LOADING_STEPS.length) return;
+    // Mark previous as done
+    const prev = stepsEl.querySelector('.loading-step.active');
+    if (prev) {
+      prev.classList.remove('active');
+      prev.querySelector('.step-dot').textContent = '';
+      prev.style.opacity = '0.5';
+    }
+    const div = document.createElement('div');
+    div.className = 'loading-step active';
+    div.style.animationDelay = '0s';
+    div.innerHTML = `<div class="step-dot"></div>${LOADING_STEPS[stepIdx]}`;
+    stepsEl.appendChild(div);
+    stepIdx++;
+    if (stepIdx < LOADING_STEPS.length) {
+      loadingTimer = setTimeout(addStep, 1200);
+    }
+  }
+  addStep();
+}
+
+function stopLoading() {
+  clearTimeout(loadingTimer);
+  document.getElementById('loadingState').style.display = 'none';
+}
+
+// ─────────────────────────────────────────────
+// Main query runner
+// ─────────────────────────────────────────────
+async function runQuery() {
+  const provider  = document.getElementById('provider').value;
+  const modelName = document.getElementById('modelName').value.trim();
+  const apiKey    = document.getElementById('apiKey').value.trim();
+  const dbUrl     = document.getElementById('dbUrl').value.trim();
+  const query     = document.getElementById('query').value.trim();
+
+  if (!apiKey)    return showToast('⚠️ Enter your API key', true);
+  if (!dbUrl)     return showToast('⚠️ Enter a database URL', true);
+  if (!query)     return showToast('⚠️ Enter a question', true);
+  if (!modelName) return showToast('⚠️ Enter a model name', true);
+
+  // UI: loading
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  document.getElementById('submitIcon').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('submitLabel').textContent = 'Running…';
+  startLoading();
+
+  // Remove old dashboard frame
+  const frame = document.getElementById('dashboardFrame');
+  frame.removeAttribute('data-loaded');
+  frame.src = '';
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, model_name: modelName, api_key: apiKey, db_url: dbUrl, query }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+
+    const result = await resp.json();
+    currentResult = result;
+    dashboardHTML = result.dashboard_html;
+
+    stopLoading();
+    renderResults(result);
+    showToast(`✅ ${result.row_count} rows returned`);
+
+  } catch (err) {
+    stopLoading();
+    showError(err.message);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('submitIcon').textContent = '▶';
+    document.getElementById('submitLabel').textContent = 'Run Query';
+  }
+}
+
+// ─────────────────────────────────────────────
+// Render results
+// ─────────────────────────────────────────────
+function renderResults(result) {
+  document.getElementById('resultsArea').style.display = '';
+
+  // Stats strip
+  const statsEl = document.getElementById('statsStrip');
+  statsEl.innerHTML = `
+    <div class="stat-pill">📦 <strong>${(result.row_count||0).toLocaleString()}</strong> rows</div>
+    <div class="stat-pill">📋 <strong>${(result.columns||[]).length}</strong> columns</div>
+    <div class="stat-pill">📊 <strong>${(result.chart_recommendations||[]).length}</strong> visualizations</div>
+  `;
+
+  // SQL
+  document.getElementById('sqlCode').textContent = result.sql_query || '';
+
+  // Data table
+  renderTable(result.data || [], result.columns || []);
+
+  // Insights
+  const insEl = document.getElementById('insightsText');
+  insEl.innerHTML = (result.insights || '')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em style="color:var(--accent);font-style:normal">$1</em>');
+
+  // Recommendations
+  renderRecs(result.chart_recommendations || []);
+
+  // Show SQL tab by default
+  showTab('sql');
+}
+
+function renderTable(data, columns) {
+  const wrap = document.getElementById('tableWrap');
+  if (!data.length) {
+    wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">No data returned.</div>';
+    return;
+  }
+  const maxRows = 200;
+  const shown = data.slice(0, maxRows);
+  const header = columns.map(c => `<th onclick="sortTableCol(this)">${c} ↕</th>`).join('');
+  const body = shown.map(row =>
+    `<tr>${columns.map(c => `<td>${row[c] ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  wrap.innerHTML = `<table id="resultsTable"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>`;
+  document.getElementById('tableFooter').textContent =
+    data.length > maxRows ? `Showing ${maxRows} of ${data.length.toLocaleString()} rows` : `${data.length} rows`;
+}
+
+function renderRecs(recs) {
+  const list = document.getElementById('recList');
+  list.innerHTML = '';
+  recs.forEach(rec => {
+    const li = document.createElement('li');
+    li.className = 'rec-item';
+    li.innerHTML = `
+      <span class="rec-badge badge-${rec.type}">${rec.type.toUpperCase()}</span>
+      <div class="rec-info">
+        <span class="rec-title">${rec.title}</span>
+        ${rec.reasoning ? `<span class="rec-reason">${rec.reasoning}</span>` : ''}
+        ${rec.primary ? '<span class="rec-primary">★ Recommended</span>' : ''}
+      </div>`;
+    list.appendChild(li);
+  });
+}
+
+function showError(msg) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsArea').style.display = '';
+  const statsEl = document.getElementById('statsStrip');
+  statsEl.innerHTML = `
+    <div class="error-banner" style="width:100%">
+      <div class="error-icon">❌</div>
+      <div class="error-msg"><strong>Query Failed</strong>${msg}</div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// Actions
+// ─────────────────────────────────────────────
+function copySQL() {
+  const sql = document.getElementById('sqlCode').textContent;
+  navigator.clipboard.writeText(sql).then(() => showToast('✅ SQL copied to clipboard'));
+}
+
+function openDashboard() {
+  if (!dashboardHTML) return;
+  const blob = new Blob([dashboardHTML], { type: 'text/html' });
+  window.open(URL.createObjectURL(blob), '_blank');
+}
+
+function downloadDashboard() {
+  if (!dashboardHTML) return;
+  const blob = new Blob([dashboardHTML], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sql_ai_dashboard.html';
+  a.click();
+  showToast('✅ Dashboard downloaded');
+}
+
+// ─────────────────────────────────────────────
+// Table sort
+// ─────────────────────────────────────────────
+function sortTableCol(th) {
+  const table = document.getElementById('resultsTable');
+  if (!table) return;
+  const colIdx = Array.from(th.parentNode.children).indexOf(th);
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const asc = th.dataset.sort !== 'asc';
+  th.dataset.sort = asc ? 'asc' : 'desc';
+  rows.sort((a, b) => {
+    const av = a.cells[colIdx]?.textContent.trim() || '';
+    const bv = b.cells[colIdx]?.textContent.trim() || '';
+    const an = parseFloat(av.replace(/,/g,''));
+    const bn = parseFloat(bv.replace(/,/g,''));
+    if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+    return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+// ─────────────────────────────────────────────
+// Toast
+// ─────────────────────────────────────────────
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isError ? 'var(--red)' : 'var(--green)';
+  el.style.color = '#fff';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ─────────────────────────────────────────────
+// Keyboard shortcut: Ctrl+Enter to submit
+// ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runQuery();
+});
+
+// ─────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
